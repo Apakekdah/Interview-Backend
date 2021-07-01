@@ -1,16 +1,14 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
+using Moduit.Interview.Interfaces;
+using Moduit.Interview.Libs;
+using System;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Moduit.Interview
 {
@@ -26,8 +24,16 @@ namespace Moduit.Interview
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddControllers();
-            services.AddSwaggerGen(c => { c.SwaggerDoc("v1", new OpenApiInfo {Title = "Moduit.Interview", Version = "v1"}); });
+            services.AddTransient(typeof(IRequester), typeof(Requester));
+
+            services.AddControllers()
+                .AddJsonOptions(opt =>
+                {
+                    opt.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+                    opt.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault;
+                    opt.JsonSerializerOptions.Converters.Add(new DateTimeNullConverter());
+                });
+            services.AddSwaggerGen(c => { c.SwaggerDoc("v1", new OpenApiInfo { Title = "Moduit.Interview", Version = "v1" }); });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -47,6 +53,32 @@ namespace Moduit.Interview
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints => { endpoints.MapControllers(); });
+        }
+    }
+
+    class DateTimeNullConverter : JsonConverter<DateTime?>
+    {
+        public override DateTime? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            var tmp = reader.GetString();
+            if (!string.IsNullOrEmpty(tmp))
+            {
+                try
+                {
+                    return DateTime.Parse(tmp);
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        public override void Write(Utf8JsonWriter writer, DateTime? value, JsonSerializerOptions options)
+        {
+            if (value.HasValue)
+                writer.WriteStringValue(value.Value.ToString("yyyy-MM-dd HH-mm-ss"));
         }
     }
 }
