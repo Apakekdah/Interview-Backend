@@ -110,3 +110,6 @@ You have **24 hours** to complete all questions.
 
 **Good Luck!**
 
+
+
+Gak Lulus tes juga gaes..
